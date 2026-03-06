@@ -22,6 +22,7 @@ model User {
   expenseParticipants ExpenseParticipant[]
   settlementsFrom     Settlement[]         @relation("SettlementFrom")
   settlementsTo       Settlement[]         @relation("SettlementTo")
+  expenseAuditLogs    ExpenseAuditLog[]
 }
 
 model Group {
@@ -73,10 +74,14 @@ model Expense {
   groupId     String?
   date        DateTime @default(now())
   createdAt   DateTime @default(now())
+  notes       String?
+  category    String?
 
   payer        User                 @relation("ExpensePayer", fields: [paidBy], references: [id])
   group        Group?               @relation(fields: [groupId], references: [id], onDelete: Cascade)
   participants ExpenseParticipant[]
+  auditLogs    ExpenseAuditLog[]
+  attachments  ExpenseAttachment[]
 }
 
 model ExpenseParticipant {
@@ -89,6 +94,26 @@ model ExpenseParticipant {
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([expenseId, userId])
+}
+
+model ExpenseAuditLog {
+  id        String   @id @default(cuid())
+  expenseId String
+  expense   Expense  @relation(fields: [expenseId], references: [id])
+  changedBy String
+  user      User     @relation(fields: [changedBy], references: [id])
+  action    String
+  snapshot  Json
+  changedAt DateTime @default(now())
+}
+
+model ExpenseAttachment {
+  id        String   @id @default(cuid())
+  expenseId String
+  expense   Expense  @relation(fields: [expenseId], references: [id])
+  url       String
+  name      String?
+  createdAt DateTime @default(now())
 }
 
 model Settlement {

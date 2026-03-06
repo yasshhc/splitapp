@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { EXPENSE_CATEGORIES } from "@/lib/constants";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "INR", "AUD", "CAD", "JPY", "SGD"];
 
@@ -23,12 +24,16 @@ export default function DirectExpenseForm({
     paidBy: currentUserId,
     date: new Date().toISOString().split("T")[0],
     splitType: "equally" as "equally" | "percent" | "shares",
+    notes: "",
+    category: "",
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setError("");
 
     const amt = parseFloat(form.amount);
     const participants =
@@ -39,20 +44,35 @@ export default function DirectExpenseForm({
             { userId: friendId, shares: 1, percent: 50 },
           ];
 
-    await fetch("/api/expenses", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        description: form.description,
-        amount: amt,
-        currency: form.currency,
-        paidBy: form.paidBy,
-        groupId: null,
-        date: form.date,
-        splitType: form.splitType,
-        participants,
-      }),
-    });
+    try {
+      const res = await fetch("/api/expenses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description: form.description,
+          amount: amt,
+          currency: form.currency,
+          paidBy: form.paidBy,
+          groupId: null,
+          date: form.date,
+          splitType: form.splitType,
+          notes: form.notes || null,
+          category: form.category || null,
+          participants,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error ?? "Something went wrong");
+        setLoading(false);
+        return;
+      }
+    } catch {
+      setError("Something went wrong");
+      setLoading(false);
+      return;
+    }
 
     router.push("/friends");
   }
@@ -107,6 +127,31 @@ export default function DirectExpenseForm({
             className="w-full border border-gray-300 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-500 text-gray-900"
           />
         </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <select
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+            >
+              <option value="">None</option>
+              {EXPENSE_CATEGORIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+            <input
+              type="text"
+              placeholder="Optional notes"
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-500 text-gray-900"
+            />
+          </div>
+        </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Paid by</label>
           <select
@@ -118,6 +163,7 @@ export default function DirectExpenseForm({
             <option value={friendId}>{friendName}</option>
           </select>
         </div>
+        {error && <p className="text-red-500 text-sm">{error}</p>}
         <button
           type="submit"
           disabled={loading}

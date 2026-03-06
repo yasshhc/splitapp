@@ -81,6 +81,9 @@ export default function FriendsClient({ currentUserId }: { currentUserId: string
                     ? `owes you ${b.currency} ${b.amount.toFixed(2)}`
                     : `you owe ${b.currency} ${Math.abs(b.amount).toFixed(2)}`}
                 </span>
+                <Link href={`/friends/${b.userId}`} className="text-xs text-gray-500 hover:underline">
+                  History
+                </Link>
                 <Link href={`/friends/${b.userId}/settle`} className="text-xs text-green-600 hover:underline">
                   Settle
                 </Link>

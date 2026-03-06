@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { EXPENSE_CATEGORIES } from "@/lib/constants";
 
 type Member = { id: string; name: string };
 
@@ -29,6 +30,8 @@ export default function ExpenseForm({
     paidBy: currentUserId,
     date: new Date().toISOString().split("T")[0],
     splitType: "equally" as "equally" | "percent" | "shares",
+    notes: "",
+    category: "",
   });
 
   const [participants, setParticipants] = useState<Participant[]>(
@@ -72,6 +75,8 @@ export default function ExpenseForm({
         groupId,
         date: form.date,
         splitType: form.splitType,
+        notes: form.notes || null,
+        category: form.category || null,
         participants: included.map((p) => ({
           userId: p.userId,
           shares: p.shares,
@@ -142,6 +147,32 @@ export default function ExpenseForm({
               <option key={m.id} value={m.id}>{m.name}</option>
             ))}
           </select>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <select
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+            >
+              <option value="">None</option>
+              {EXPENSE_CATEGORIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+            <input
+              type="text"
+              placeholder="Optional notes"
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-500 text-gray-900"
+            />
+          </div>
         </div>
 
         <div>

@@ -10,6 +10,7 @@ export default function Navbar() {
     { href: "/dashboard", label: "Dashboard" },
     { href: "/groups", label: "Groups" },
     { href: "/friends", label: "Friends" },
+    { href: "/expenses", label: "History" },
   ];
 
   return (

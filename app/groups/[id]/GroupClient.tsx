@@ -1,18 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import ExpenseHistoryList from "@/components/ExpenseHistoryList";
 
 type Member = { user: { id: string; name: string; email: string } };
 type Balance = { userId: string; userName: string; amount: number; currency: string };
-type Expense = {
-  id: string;
-  description: string;
-  amount: number;
-  currency: string;
-  date: string;
-  payer: { id: string; name: string };
-  participants: { user: { id: string; name: string }; shareAmount: number }[];
-};
 
 type GroupData = {
   id: string;
@@ -20,7 +12,6 @@ type GroupData = {
   currency: string;
   inviteToken: string;
   members: Member[];
-  expenses: Expense[];
   balances: Balance[];
 };
 
@@ -31,7 +22,16 @@ export default function GroupClient({ groupId, currentUserId }: { groupId: strin
   const [tab, setTab] = useState<"balances" | "expenses">("balances");
 
   useEffect(() => {
-    fetch(`/api/groups/${groupId}`).then((r) => r.json()).then(setGroup);
+    fetch(`/api/groups/${groupId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.members) {
+          setGroup(data);
+        } else {
+          console.error("Group API returned unexpected data:", data);
+        }
+      })
+      .catch((err) => console.error("Group fetch failed:", err));
   }, [groupId]);
 
   async function handleInvite(e: React.FormEvent) {
@@ -44,12 +44,15 @@ export default function GroupClient({ groupId, currentUserId }: { groupId: strin
     const data = await res.json();
     setInviteMsg(data.message ?? data.error);
     setInviteEmail("");
-    fetch(`/api/groups/${groupId}`).then((r) => r.json()).then(setGroup);
+    fetch(`/api/groups/${groupId}`)
+      .then((r) => r.json())
+      .then((data) => { if (data?.members) setGroup(data); });
   }
 
   if (!group) return <div className="p-6 text-gray-600">Loading...</div>;
 
   const shareLink = `${window.location.origin}/groups/invite/${group.inviteToken}`;
+  const members = group.members.map((m) => m.user);
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -157,26 +160,12 @@ export default function GroupClient({ groupId, currentUserId }: { groupId: strin
       )}
 
       {tab === "expenses" && (
-        <div className="flex flex-col gap-2">
-          {group.expenses.length === 0 ? (
-            <div className="bg-white border border-gray-200 rounded-xl p-6 text-center text-gray-600">
-              No expenses yet.
-            </div>
-          ) : (
-            group.expenses.map((exp) => (
-              <div key={exp.id} className="bg-white border border-gray-200 rounded-lg px-4 py-3">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-gray-900">{exp.description}</span>
-                  <span className="font-semibold text-gray-900">{exp.currency} {exp.amount.toFixed(2)}</span>
-                </div>
-                <p className="text-sm text-gray-600 mt-0.5">
-                  Paid by {exp.payer.id === currentUserId ? "you" : exp.payer.name} ·{" "}
-                  {new Date(exp.date).toLocaleDateString()}
-                </p>
-              </div>
-            ))
-          )}
-        </div>
+        <ExpenseHistoryList
+          scope="group"
+          entityId={groupId}
+          currentUserId={currentUserId}
+          members={members}
+        />
       )}
     </div>
   );
