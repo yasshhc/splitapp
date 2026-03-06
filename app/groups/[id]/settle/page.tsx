@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import SettleForm from "./SettleForm";
@@ -11,8 +11,7 @@ export default async function SettlePage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ with?: string }>;
 }) {
-  const session = await auth();
-  if (!session) redirect("/auth/login");
+  const user = await getCurrentUser();
 
   const { id } = await params;
   const { with: withUserId } = await searchParams;
@@ -26,7 +25,7 @@ export default async function SettlePage({
 
   const otherMembers = group.members
     .map((m) => m.user)
-    .filter((u) => u.id !== session.user.id);
+    .filter((u) => u.id !== user!.id);
 
   return (
     <div>
@@ -35,7 +34,7 @@ export default async function SettlePage({
         groupId={id}
         groupCurrency={group.currency}
         members={otherMembers}
-        currentUserId={session.user.id!}
+        currentUserId={user!.id}
         preselectedUserId={withUserId}
       />
     </div>

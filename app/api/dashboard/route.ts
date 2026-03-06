@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { getUserBalances } from "@/lib/balance";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const [balances, groups] = await Promise.all([
-    getUserBalances(session.user.id),
+    getUserBalances(user.id),
     prisma.groupMember.findMany({
-      where: { userId: session.user.id },
+      where: { userId: user.id },
       include: { group: { select: { id: true, name: true, currency: true } } },
     }),
   ]);

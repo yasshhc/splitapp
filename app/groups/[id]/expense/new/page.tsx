@@ -1,12 +1,11 @@
-import { auth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import ExpenseForm from "./ExpenseForm";
 import { prisma } from "@/lib/prisma";
 
 export default async function NewExpensePage({ params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session) redirect("/auth/login");
+  const user = await getCurrentUser();
 
   const { id } = await params;
 
@@ -24,7 +23,7 @@ export default async function NewExpensePage({ params }: { params: Promise<{ id:
         groupId={id}
         groupCurrency={group.currency}
         members={group.members.map((m) => m.user)}
-        currentUserId={session.user.id!}
+        currentUserId={user!.id}
       />
     </div>
   );

@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 export default async function Home() {
-  const session = await auth();
-  if (session) redirect("/dashboard");
+  const user = await getCurrentUser();
+  if (user) redirect("/dashboard");
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-white px-4">
@@ -15,13 +15,13 @@ export default async function Home() {
         </p>
         <div className="flex gap-3 justify-center">
           <Link
-            href="/auth/signup"
+            href="/sign-up"
             className="bg-green-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-green-700 transition"
           >
             Get started
           </Link>
           <Link
-            href="/auth/login"
+            href="/sign-in"
             className="border border-gray-300 text-gray-700 px-6 py-2.5 rounded-lg font-medium hover:bg-gray-50 transition"
           >
             Log in

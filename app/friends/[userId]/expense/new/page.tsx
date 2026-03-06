@@ -1,12 +1,11 @@
-import { auth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import DirectExpenseForm from "./DirectExpenseForm";
 import { prisma } from "@/lib/prisma";
 
 export default async function DirectExpensePage({ params }: { params: Promise<{ userId: string }> }) {
-  const session = await auth();
-  if (!session) redirect("/auth/login");
+  const user = await getCurrentUser();
 
   const { userId } = await params;
 
@@ -23,8 +22,8 @@ export default async function DirectExpensePage({ params }: { params: Promise<{ 
       <DirectExpenseForm
         friendId={friend.id}
         friendName={friend.name}
-        currentUserId={session.user.id!}
-        currentUserName={session.user.name!}
+        currentUserId={user!.id}
+        currentUserName={user!.name}
       />
     </div>
   );

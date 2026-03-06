@@ -1,15 +1,13 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
 import Navbar from "@/components/Navbar";
 import FriendsClient from "./FriendsClient";
 
 export default async function FriendsPage() {
-  const session = await auth();
-  if (!session) redirect("/auth/login");
+  const user = await getCurrentUser();
   return (
     <div>
       <Navbar />
-      <FriendsClient currentUserId={session.user.id!} />
+      <FriendsClient currentUserId={user!.id} />
     </div>
   );
 }

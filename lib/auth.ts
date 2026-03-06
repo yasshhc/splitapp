@@ -1,46 +1,38 @@
-import NextAuth from "next-auth";
-import Credentials from "next-auth/providers/credentials";
-import { prisma } from "./prisma";
-import bcrypt from "bcryptjs";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import { prisma } from "@/lib/prisma";
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
-  session: { strategy: "jwt" },
-  pages: {
-    signIn: "/auth/login",
-  },
-  providers: [
-    Credentials({
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+export async function getCurrentUser() {
+  const { userId } = await auth();
+  if (!userId) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
-        });
+  const clerkUser = await currentUser();
+  const email = clerkUser?.emailAddresses[0]?.emailAddress ?? "";
+  const name = `${clerkUser?.firstName ?? ""} ${clerkUser?.lastName ?? ""}`.trim();
 
-        if (!user) return null;
+  // Try to find user by clerkId first
+  let user = await prisma.user.findUnique({
+    where: { clerkId: userId },
+  });
 
-        const valid = await bcrypt.compare(
-          credentials.password as string,
-          user.password
-        );
-        if (!valid) return null;
+  if (user) {
+    return user;
+  }
 
-        return { id: user.id, name: user.name, email: user.email };
-      },
-    }),
-  ],
-  callbacks: {
-    jwt({ token, user }) {
-      if (user) token.id = user.id;
-      return token;
-    },
-    session({ session, token }) {
-      if (token?.id) session.user.id = token.id as string;
-      return session;
-    },
-  },
-});
+  // If not found by clerkId, try to find by email and link the clerkId
+  const existingUserByEmail = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (existingUserByEmail) {
+    // Update existing user to link their clerkId
+    return prisma.user.update({
+      where: { email },
+      data: { clerkId: userId },
+    });
+  }
+
+  // Create new user if neither clerkId nor email exists
+  return prisma.user.create({
+    data: { clerkId: userId, email, name },
+  });
+}

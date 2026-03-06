@@ -1,11 +1,9 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
 import Navbar from "@/components/Navbar";
 import GroupsClient from "./GroupsClient";
 
 export default async function GroupsPage() {
-  const session = await auth();
-  if (!session) redirect("/auth/login");
+  await getCurrentUser();
   return (
     <div>
       <Navbar />

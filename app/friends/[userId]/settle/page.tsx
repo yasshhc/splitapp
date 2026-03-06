@@ -1,12 +1,11 @@
-import { auth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import DirectSettleForm from "./DirectSettleForm";
 import { prisma } from "@/lib/prisma";
 
 export default async function DirectSettlePage({ params }: { params: Promise<{ userId: string }> }) {
-  const session = await auth();
-  if (!session) redirect("/auth/login");
+  await getCurrentUser();
 
   const { userId } = await params;
 

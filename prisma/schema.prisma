@@ -8,34 +8,33 @@ datasource db {
 }
 
 model User {
-  id              String   @id @default(cuid())
-  name            String
-  email           String   @unique
-  password        String
-  defaultCurrency String   @default("USD")
-  createdAt       DateTime @default(now())
-
-  groupsCreated       Group[]              @relation("GroupCreator")
-  groupMembers        GroupMember[]
-  groupInvitesSent    GroupInvite[]        @relation("InviteSender")
+  id                  String               @id @default(cuid())
+  clerkId             String?              @unique
+  name                String
+  email               String               @unique
+  defaultCurrency     String               @default("USD")
+  createdAt           DateTime             @default(now())
   expensesPaid        Expense[]            @relation("ExpensePayer")
+  ExpenseAuditLog     ExpenseAuditLog[]
   expenseParticipants ExpenseParticipant[]
+  groupsCreated       Group[]              @relation("GroupCreator")
+  groupInvitesSent    GroupInvite[]        @relation("InviteSender")
+  groupMembers        GroupMember[]
   settlementsFrom     Settlement[]         @relation("SettlementFrom")
   settlementsTo       Settlement[]         @relation("SettlementTo")
 }
 
 model Group {
-  id          String   @id @default(cuid())
+  id          String        @id @default(cuid())
   name        String
-  currency    String   @default("USD")
-  inviteToken String   @unique @default(cuid())
+  currency    String        @default("USD")
+  inviteToken String        @unique @default(cuid())
   createdBy   String
-  createdAt   DateTime @default(now())
-
-  creator     User          @relation("GroupCreator", fields: [createdBy], references: [id])
-  members     GroupMember[]
-  invites     GroupInvite[]
+  createdAt   DateTime      @default(now())
   expenses    Expense[]
+  creator     User          @relation("GroupCreator", fields: [createdBy], references: [id])
+  invites     GroupInvite[]
+  members     GroupMember[]
   settlements Settlement[]
 }
 
@@ -44,9 +43,8 @@ model GroupMember {
   groupId  String
   userId   String
   joinedAt DateTime @default(now())
-
-  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([groupId, userId])
 }
@@ -59,34 +57,35 @@ model GroupInvite {
   invitedBy String
   status    String   @default("pending")
   createdAt DateTime @default(now())
-
-  group   Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  inviter User  @relation("InviteSender", fields: [invitedBy], references: [id])
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  inviter   User     @relation("InviteSender", fields: [invitedBy], references: [id])
 }
 
 model Expense {
-  id          String   @id @default(cuid())
-  description String
-  amount      Float
-  currency    String   @default("USD")
-  paidBy      String
-  groupId     String?
-  date        DateTime @default(now())
-  createdAt   DateTime @default(now())
-
-  payer        User                 @relation("ExpensePayer", fields: [paidBy], references: [id])
-  group        Group?               @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  participants ExpenseParticipant[]
+  id                String               @id @default(cuid())
+  description       String
+  amount            Float
+  currency          String               @default("USD")
+  paidBy            String
+  groupId           String?
+  date              DateTime             @default(now())
+  createdAt         DateTime             @default(now())
+  category          String?
+  notes             String?
+  group             Group?               @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  payer             User                 @relation("ExpensePayer", fields: [paidBy], references: [id])
+  ExpenseAttachment ExpenseAttachment[]
+  ExpenseAuditLog   ExpenseAuditLog[]
+  participants      ExpenseParticipant[]
 }
 
 model ExpenseParticipant {
-  id          String @id @default(cuid())
+  id          String  @id @default(cuid())
   expenseId   String
   userId      String
   shareAmount Float
-
-  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expense     Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([expenseId, userId])
 }
@@ -100,8 +99,27 @@ model Settlement {
   groupId    String?
   note       String?
   date       DateTime @default(now())
+  fromUser   User     @relation("SettlementFrom", fields: [fromUserId], references: [id])
+  group      Group?   @relation(fields: [groupId], references: [id])
+  toUser     User     @relation("SettlementTo", fields: [toUserId], references: [id])
+}
 
-  fromUser User   @relation("SettlementFrom", fields: [fromUserId], references: [id])
-  toUser   User   @relation("SettlementTo", fields: [toUserId], references: [id])
-  group    Group? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+model ExpenseAttachment {
+  id        String   @id
+  expenseId String
+  url       String
+  name      String?
+  createdAt DateTime @default(now())
+  Expense   Expense  @relation(fields: [expenseId], references: [id])
+}
+
+model ExpenseAuditLog {
+  id        String   @id
+  expenseId String
+  changedBy String
+  action    String
+  snapshot  Json
+  changedAt DateTime @default(now())
+  User      User     @relation(fields: [changedBy], references: [id])
+  Expense   Expense  @relation(fields: [expenseId], references: [id])
 }
