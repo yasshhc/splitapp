@@ -1,38 +1,30 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
+import { Plus, Copy, Mail, Users } from "lucide-react";
 
 type Member = { user: { id: string; name: string; email: string } };
 type Balance = { userId: string; userName: string; amount: number; currency: string };
 type Expense = {
-  id: string;
-  description: string;
-  amount: number;
-  currency: string;
-  date: string;
+  id: string; description: string; amount: number; currency: string; date: string;
   payer: { id: string; name: string };
   participants: { user: { id: string; name: string }; shareAmount: number }[];
 };
-
-type GroupData = {
-  id: string;
-  name: string;
-  currency: string;
-  inviteToken: string;
-  members: Member[];
-  expenses: Expense[];
-  balances: Balance[];
-};
+type GroupData = { id: string; name: string; currency: string; inviteToken: string; members: Member[]; expenses: Expense[]; balances: Balance[] };
 
 export default function GroupClient({ groupId, currentUserId }: { groupId: string; currentUserId: string }) {
   const [group, setGroup] = useState<GroupData | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteMsg, setInviteMsg] = useState("");
-  const [tab, setTab] = useState<"balances" | "expenses">("balances");
 
-  useEffect(() => {
-    fetch(`/api/groups/${groupId}`).then((r) => r.json()).then(setGroup);
-  }, [groupId]);
+  const reload = () => fetch(`/api/groups/${groupId}`).then((r) => r.json()).then(setGroup);
+  useEffect(() => { reload(); }, [groupId]);
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -42,142 +34,147 @@ export default function GroupClient({ groupId, currentUserId }: { groupId: strin
       body: JSON.stringify({ email: inviteEmail }),
     });
     const data = await res.json();
-    setInviteMsg(data.message ?? data.error);
+    if (data.error) toast.error(data.error);
+    else toast.success(data.message ?? "Invited!");
     setInviteEmail("");
-    fetch(`/api/groups/${groupId}`).then((r) => r.json()).then(setGroup);
+    reload();
   }
 
-  if (!group) return <div className="p-6 text-gray-600">Loading...</div>;
+  if (!group) return (
+    <div className="max-w-2xl mx-auto px-4 py-12 space-y-3">
+      {[...Array(4)].map((_, i) => <div key={i} className="h-14 rounded-xl bg-muted animate-pulse" />)}
+    </div>
+  );
 
   const shareLink = `${window.location.origin}/groups/invite/${group.inviteToken}`;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">{group.name}</h1>
-          <p className="text-sm text-gray-600">{group.currency} · {group.members.length} members</p>
-        </div>
-        <Link
-          href={`/groups/${groupId}/expense/new`}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition"
-        >
-          + Add expense
-        </Link>
-      </div>
-
-      {/* Invite */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
-        <p className="text-sm font-medium text-gray-900 mb-2">Invite members</p>
-        <form onSubmit={handleInvite} className="flex gap-2 mb-2">
-          <input
-            type="email"
-            placeholder="Email address"
-            value={inviteEmail}
-            onChange={(e) => setInviteEmail(e.target.value)}
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-500 text-gray-900"
-          />
-          <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition">
-            Invite
-          </button>
-        </form>
-        {inviteMsg && <p className="text-xs text-gray-700">{inviteMsg}</p>}
-        <div className="mt-2">
-          <p className="text-xs text-gray-600 mb-1">Or share this link:</p>
-          <div className="flex gap-2 items-center">
-            <input
-              readOnly
-              value={shareLink}
-              className="flex-1 text-xs border border-gray-200 rounded px-2 py-1 bg-gray-50 text-gray-700"
-            />
-            <button
-              onClick={() => navigator.clipboard.writeText(shareLink)}
-              className="text-xs text-green-600 hover:underline"
-            >
-              Copy
-            </button>
+    <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-lg font-bold text-primary">
+            {group.name[0].toUpperCase()}
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">{group.name}</h1>
+            <p className="text-sm text-muted-foreground">{group.currency} · {group.members.length} members</p>
           </div>
         </div>
+        <Button asChild>
+          <Link href={`/groups/${groupId}/expense/new`} className="gap-1.5">
+            <Plus className="h-4 w-4" /> Add expense
+          </Link>
+        </Button>
       </div>
 
-      {/* Members */}
-      <div className="mb-6">
-        <p className="text-sm font-medium text-gray-700 mb-2">Members</p>
-        <div className="flex gap-2 flex-wrap">
-          {group.members.map((m) => (
-            <span key={m.user.id} className="bg-gray-100 text-gray-900 text-sm px-3 py-1 rounded-full">
-              {m.user.name}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Users className="h-4 w-4" /> Invite members
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <form onSubmit={handleInvite} className="flex gap-2">
+            <Input type="email" placeholder="friend@example.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="flex-1" />
+            <Button type="submit" variant="secondary" className="gap-1.5">
+              <Mail className="h-4 w-4" /> Invite
+            </Button>
+          </form>
+          <div className="flex items-center gap-2">
+            <Input readOnly value={shareLink} className="flex-1 text-xs text-muted-foreground" />
+            <Button variant="outline" size="sm" className="gap-1.5 shrink-0"
+              onClick={() => { navigator.clipboard.writeText(shareLink); toast.success("Link copied!"); }}>
+              <Copy className="h-3.5 w-3.5" /> Copy
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex gap-2 flex-wrap">
+        {group.members.map((m) => (
+          <Badge key={m.user.id} variant="secondary" className="gap-1.5 py-1 px-3">
+            <span className="w-4 h-4 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold">
+              {m.user.name[0].toUpperCase()}
             </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1 mb-4 bg-gray-100 rounded-lg p-1">
-        {(["balances", "expenses"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`flex-1 py-1.5 rounded-md text-sm font-medium capitalize transition ${
-              tab === t ? "bg-white shadow-sm text-gray-900" : "text-gray-600"
-            }`}
-          >
-            {t}
-          </button>
+            {m.user.name}
+          </Badge>
         ))}
       </div>
 
-      {tab === "balances" && (
-        <div className="flex flex-col gap-2">
-          {group.balances.length === 0 ? (
-            <div className="bg-white border border-gray-200 rounded-xl p-6 text-center text-gray-600">
-              All settled up!
-            </div>
-          ) : (
-            group.balances.map((b) => (
-              <div key={b.userId} className="bg-white border border-gray-200 rounded-lg px-4 py-3 flex justify-between items-center">
-                <span className="font-medium text-gray-900">{b.userName}</span>
-                <div className="flex items-center gap-3">
-                  <span className={b.amount > 0 ? "text-green-600 font-semibold" : "text-red-500 font-semibold"}>
-                    {b.amount > 0
-                      ? `owes you ${b.currency} ${b.amount.toFixed(2)}`
-                      : `you owe ${b.currency} ${Math.abs(b.amount).toFixed(2)}`}
-                  </span>
-                  <Link
-                    href={`/groups/${groupId}/settle?with=${b.userId}`}
-                    className="text-xs text-green-600 hover:underline"
-                  >
-                    Settle
-                  </Link>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      )}
+      <Tabs defaultValue="balances">
+        <TabsList className="w-full">
+          <TabsTrigger value="balances" className="flex-1">Balances</TabsTrigger>
+          <TabsTrigger value="expenses" className="flex-1">Expenses</TabsTrigger>
+        </TabsList>
 
-      {tab === "expenses" && (
-        <div className="flex flex-col gap-2">
-          {group.expenses.length === 0 ? (
-            <div className="bg-white border border-gray-200 rounded-xl p-6 text-center text-gray-600">
-              No expenses yet.
-            </div>
+        <TabsContent value="balances" className="mt-4">
+          {group.balances.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+                <p className="font-medium">All settled up!</p>
+                <p className="text-sm text-muted-foreground">No outstanding balances in this group</p>
+              </CardContent>
+            </Card>
           ) : (
-            group.expenses.map((exp) => (
-              <div key={exp.id} className="bg-white border border-gray-200 rounded-lg px-4 py-3">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-gray-900">{exp.description}</span>
-                  <span className="font-semibold text-gray-900">{exp.currency} {exp.amount.toFixed(2)}</span>
-                </div>
-                <p className="text-sm text-gray-600 mt-0.5">
-                  Paid by {exp.payer.id === currentUserId ? "you" : exp.payer.name} ·{" "}
-                  {new Date(exp.date).toLocaleDateString()}
-                </p>
-              </div>
-            ))
+            <Card>
+              <CardContent className="p-0">
+                {group.balances.map((b, i) => (
+                  <div key={b.userId}>
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm font-semibold">
+                          {b.userName[0].toUpperCase()}
+                        </div>
+                        <span className="font-medium">{b.userName}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={b.amount > 0 ? "default" : "destructive"}>
+                          {b.amount > 0 ? `owes you ${b.currency} ${b.amount.toFixed(2)}` : `you owe ${b.currency} ${Math.abs(b.amount).toFixed(2)}`}
+                        </Badge>
+                        <Button asChild variant="ghost" size="sm">
+                          <Link href={`/groups/${groupId}/settle?with=${b.userId}`}>Settle</Link>
+                        </Button>
+                      </div>
+                    </div>
+                    {i < group.balances.length - 1 && <Separator />}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
           )}
-        </div>
-      )}
+        </TabsContent>
+
+        <TabsContent value="expenses" className="mt-4">
+          {group.expenses.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+                <p className="font-medium">No expenses yet</p>
+                <p className="text-sm text-muted-foreground mb-3">Add the first expense to this group</p>
+                <Button asChild size="sm"><Link href={`/groups/${groupId}/expense/new`}>Add expense</Link></Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="p-0">
+                {group.expenses.map((exp, i) => (
+                  <div key={exp.id}>
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <div>
+                        <p className="font-medium">{exp.description}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Paid by {exp.payer.id === currentUserId ? "you" : exp.payer.name} · {new Date(exp.date).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <span className="font-semibold">{exp.currency} {exp.amount.toFixed(2)}</span>
+                    </div>
+                    {i < group.expenses.length - 1 && <Separator />}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
