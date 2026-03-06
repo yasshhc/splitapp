@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String   @id @default(cuid())
+  name            String
+  email           String   @unique
+  password        String
+  defaultCurrency String   @default("USD")
+  createdAt       DateTime @default(now())
+
+  groupsCreated       Group[]              @relation("GroupCreator")
+  groupMembers        GroupMember[]
+  groupInvitesSent    GroupInvite[]        @relation("InviteSender")
+  expensesPaid        Expense[]            @relation("ExpensePayer")
+  expenseParticipants ExpenseParticipant[]
+  settlementsFrom     Settlement[]         @relation("SettlementFrom")
+  settlementsTo       Settlement[]         @relation("SettlementTo")
+}
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  currency    String   @default("USD")
+  inviteToken String   @unique @default(cuid())
+  createdBy   String
+  createdAt   DateTime @default(now())
+
+  creator     User          @relation("GroupCreator", fields: [createdBy], references: [id])
+  members     GroupMember[]
+  invites     GroupInvite[]
+  expenses    Expense[]
+  settlements Settlement[]
+}
+
+model GroupMember {
+  id       String   @id @default(cuid())
+  groupId  String
+  userId   String
+  joinedAt DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+}
+
+model GroupInvite {
+  id        String   @id @default(cuid())
+  groupId   String
+  email     String
+  token     String   @unique @default(cuid())
+  invitedBy String
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+
+  group   Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  inviter User  @relation("InviteSender", fields: [invitedBy], references: [id])
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  description String
+  amount      Float
+  currency    String   @default("USD")
+  paidBy      String
+  groupId     String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  payer        User                 @relation("ExpensePayer", fields: [paidBy], references: [id])
+  group        Group?               @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  participants ExpenseParticipant[]
+}
+
+model ExpenseParticipant {
+  id          String @id @default(cuid())
+  expenseId   String
+  userId      String
+  shareAmount Float
+
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([expenseId, userId])
+}
+
+model Settlement {
+  id         String   @id @default(cuid())
+  fromUserId String
+  toUserId   String
+  amount     Float
+  currency   String   @default("USD")
+  groupId    String?
+  note       String?
+  date       DateTime @default(now())
+
+  fromUser User   @relation("SettlementFrom", fields: [fromUserId], references: [id])
+  toUser   User   @relation("SettlementTo", fields: [toUserId], references: [id])
+  group    Group? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+}
